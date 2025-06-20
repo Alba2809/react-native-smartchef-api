@@ -8,8 +8,6 @@ export const PORT = process.env.PORT || 4000;
 
 export const MONGO_URL = process.env.MONGO_URL || "";
 
-export const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-
 export const OPENAI_KEY = process.env.OPENAI_KEY || "";
 
 export const GEMINAI_KEY = process.env.GEMINAI_KEY || "";
