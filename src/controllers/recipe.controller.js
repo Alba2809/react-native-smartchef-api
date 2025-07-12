@@ -20,7 +20,7 @@ export const getRecipes = async (req, res) => {
       .populate("categories")
       .lean();
 
-    // get rating average for each recipe and the favorite count
+    // get the favorite count for each recipe
     const enrichedRecipes = await Promise.all(
       recipes.map(async (recipe) => {
         const [ratingStats, favoritesCount] = await Promise.all([
@@ -87,9 +87,62 @@ export const getRecipe = async (req, res) => {
     recipe.averageRating = ratingStats[0]?.averageRating || 0;
     recipe.favoriteCount = favoritesCount;
 
-    res.status(200).json(recipe);
+    res.status(200).json({ recipe });
   } catch (err) {
     res.status(500).json({ error: "Error getting recipe" });
+  }
+};
+
+export const getRecipesByUser = async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+
+    // get favorite recipes
+    const favorites = await Favorite.find({ user: userId })
+      .populate({
+        path: "recipe",
+        populate: [
+          {
+            path: "user",
+            select: "username avatar",
+          },
+          {
+            path: "categories",
+          },
+        ],
+      })
+      .lean();
+
+    // filter out recipes that are not saved or were deleted
+    const recipes = favorites.map((fav) => fav.recipe).filter(Boolean);
+
+    // get favorites count
+    const favoritesCount = await Favorite.aggregate([
+      {
+        $group: {
+          _id: "$recipe",
+          totalFavorites: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // add favorites count to each recipe
+    const favoritesWithCounts = recipes.map((recipe) => {
+      const count =
+        favoritesCount.find(
+          (fav) => fav._id.toString() === recipe._id.toString()
+        )?.totalFavorites || 0;
+
+      return {
+        ...recipe,
+        favorites: count,
+      };
+    });
+
+    res.status(200).json({ recipes: favoritesWithCounts });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Error getting recipes" });
   }
 };
 
@@ -178,14 +231,14 @@ export const processTextAI = async (req, res) => {
 
     const match = responseText.match(/```json\s*([\s\S]+?)\s*```/);
 
-    if(!match) {
+    if (!match) {
       console.warn("⚠️ No se encontró bloque JSON en la respuesta");
       return res.status(400).json({ error: "Error getting data with AI" });
     }
 
     const recipeData = JSON.parse(match[1]);
 
-    res.status(200).json(recipeData);
+    res.status(200).json({ recipeData });
   } catch (err) {
     res.status(500).json({ error: "Error getting data with AI" });
   }
