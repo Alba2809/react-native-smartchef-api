@@ -10,49 +10,40 @@ export const getRecipes = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const { name, categories } = req.query;
+
+    const filters = {};
+
+    // search by name with case insensitive
+    if (name) {
+      filters.name = { $regex: name, $options: "i" }; 
+    }
+
+    // search by categories
+    if (categories && Array.isArray(categories)) {
+      filters.categories = { $in: categories };
+    }
+
     // Sort by createdAt and favoriteCount descending
-    // pagination
-    const recipes = await Recipe.find()
-      .sort({ createdAt: -1, favoriteCount: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("user", "username avatar")
-      .populate("categories")
-      .lean();
-
-    // get the favorite count for each recipe
-    const enrichedRecipes = await Promise.all(
-      recipes.map(async (recipe) => {
-        const [ratingStats, favoritesCount] = await Promise.all([
-          Rating.aggregate([
-            { $match: { recipe: recipe._id } },
-            {
-              $group: {
-                _id: "$recipe",
-                averageRating: { $avg: "$value" },
-              },
-            },
-          ]),
-          Favorite.countDocuments({ recipe: recipe._id }),
-        ]);
-
-        return {
-          ...recipe,
-          averageRating: ratingStats[0]?.averageRating || 0,
-          favoriteCount: favoritesCount,
-        };
-      })
-    );
-
-    const totalRecipes = await Recipe.countDocuments();
+    const [recipes, totalRecipes] = await Promise.all([
+      Recipe.find(filters)
+        .sort({ createdAt: -1, favoriteCount: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("user", "username avatar")
+        .populate("categories")
+        .lean(),
+      Recipe.countDocuments(filters),
+    ]);
 
     res.status(200).json({
-      recipes: enrichedRecipes,
+      recipes,
       currentPage: page,
       totalPages: Math.ceil(totalRecipes / limit),
       totalRecipes,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Error getting recipes" });
   }
 };
@@ -90,59 +81,6 @@ export const getRecipe = async (req, res) => {
     res.status(200).json({ recipe });
   } catch (err) {
     res.status(500).json({ error: "Error getting recipe" });
-  }
-};
-
-export const getRecipesByUser = async (req, res) => {
-  try {
-    const userId = req.user._id.toString();
-
-    // get favorite recipes
-    const favorites = await Favorite.find({ user: userId })
-      .populate({
-        path: "recipe",
-        populate: [
-          {
-            path: "user",
-            select: "username avatar",
-          },
-          {
-            path: "categories",
-          },
-        ],
-      })
-      .lean();
-
-    // filter out recipes that are not saved or were deleted
-    const recipes = favorites.map((fav) => fav.recipe).filter(Boolean);
-
-    // get favorites count
-    const favoritesCount = await Favorite.aggregate([
-      {
-        $group: {
-          _id: "$recipe",
-          totalFavorites: { $sum: 1 },
-        },
-      },
-    ]);
-
-    // add favorites count to each recipe
-    const favoritesWithCounts = recipes.map((recipe) => {
-      const count =
-        favoritesCount.find(
-          (fav) => fav._id.toString() === recipe._id.toString()
-        )?.totalFavorites || 0;
-
-      return {
-        ...recipe,
-        favorites: count,
-      };
-    });
-
-    res.status(200).json({ recipes: favoritesWithCounts });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Error getting recipes" });
   }
 };
 
