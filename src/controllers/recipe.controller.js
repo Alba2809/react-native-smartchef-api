@@ -31,7 +31,7 @@ export const getRecipes = async (req, res) => {
         .skip(skip)
         .limit(limit)
         .populate("user", "username avatar")
-        .populate("categories")
+        .populate("categories", "name _id")
         .lean(),
       Recipe.countDocuments(filters),
     ]);
