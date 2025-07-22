@@ -6,9 +6,9 @@ import recipeRoutes from './routes/recipe.routes.js';
 import favoriteRoutes from './routes/favorite.routes.js';
 // import { generateJSONGeminai } from './lib/aiProcess.js';
 
-// import insertCategories from './lib/insertCategories.js';
+// import { insertRecipes } from './lib/testData.js';
 
-// insertCategories()
+// insertRecipes()
 
 
 const app = express();
