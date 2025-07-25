@@ -10,13 +10,13 @@ export const getRecipes = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const { name, categories } = req.query;
+    const { title, categories } = req.query;
 
     const filters = {};
 
-    // search by name with case insensitive
-    if (name) {
-      filters.name = { $regex: name, $options: "i" }; 
+    // search by title with case insensitive
+    if (title?.trim()) {
+      filters.title = { $regex: title.trim(), $options: "i" };
     }
 
     // search by categories
@@ -30,14 +30,29 @@ export const getRecipes = async (req, res) => {
         .sort({ createdAt: -1, favoriteCount: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("user", "username avatar")
+        .populate("user", "username avatar -_id")
         .populate("categories", "name _id")
         .lean(),
       Recipe.countDocuments(filters),
     ]);
 
+    // indicate if the user have favorited the recipe
+    const recipeIds = recipes.map((r) => r._id);
+
+    const favorites = await Favorite.find({
+      user: req.user._id,
+      recipe: { $in: recipeIds },
+    }).select("recipe");
+
+    const favoriteIds = new Set(favorites.map((f) => f.recipe.toString()));
+
+    const recipesWithFavorite = recipes.map((recipe) => ({
+      ...recipe,
+      isFavorite: favoriteIds.has(recipe._id.toString()),
+    }));
+
     res.status(200).json({
-      recipes,
+      recipes: recipesWithFavorite,
       currentPage: page,
       totalPages: Math.ceil(totalRecipes / limit),
       totalRecipes,
