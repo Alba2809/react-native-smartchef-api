@@ -5,8 +5,26 @@ export const getRecipesByUser = async (req, res) => {
   try {
     const userId = req.user._id.toString();
 
+    const { title, categories } = req.query;
+
+    const filters = {
+      user: userId,
+    };
+
+    // search by title with case insensitive
+    if (title?.trim()) {
+      filters.title = { $regex: title.trim(), $options: "i" };
+    }
+
+    // search by categories
+    if (categories) {
+      filters.categories = {
+        $in: Array.isArray(categories) ? categories : [categories],
+      };
+    }
+
     // search for favorite recipes by user
-    const favorites = await Favorite.find({ user: userId })
+    const favorites = await Favorite.find(filters)
       .populate({
         path: "recipe",
         populate: [
