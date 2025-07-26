@@ -20,14 +20,16 @@ export const getRecipes = async (req, res) => {
     }
 
     // search by categories
-    if (categories && Array.isArray(categories)) {
-      filters.categories = { $in: categories };
+    if (categories) {
+      filters.categories = {
+        $in: Array.isArray(categories) ? categories : [categories],
+      };
     }
 
     // Sort by createdAt and favoriteCount descending
     const [recipes, totalRecipes] = await Promise.all([
       Recipe.find(filters)
-        .sort({ createdAt: -1, favoriteCount: -1 })
+        .sort({ createdAt: -1, favoriteCount: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
         .populate("user", "username avatar -_id")
