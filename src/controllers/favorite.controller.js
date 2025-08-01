@@ -40,7 +40,7 @@ export const getRecipesByUser = async (req, res) => {
       .filter(Boolean)
       .map((recipe) => ({
         ...recipe,
-        favoritesCount: recipe.favoriteCount || 0, // usar el campo almacenado
+        favoriteCount: recipe.favoriteCount || 0, // usar el campo almacenado
       }));
 
     res.status(200).json({ recipes });
@@ -62,7 +62,7 @@ export const createDeleteFavorite = async (req, res) => {
     }
 
     // if the user is the owner of the recipe, then return an error with a message
-    if (recipe.user.toString() !== userId.toString()) {
+    if (recipe.user.toString() === userId.toString()) {
       return res
         .status(401)
         .json({ error: "You can't mark your own recipe as favorite" });
@@ -83,15 +83,27 @@ export const createDeleteFavorite = async (req, res) => {
         { $inc: { favoriteCount: -1 } }
       );
 
-      return res
-        .status(200)
-        .json({ message: "Recipe unfavorited successfully" });
+      const updatedRecipe = await Recipe.findById(recipeId);
+
+      return res.status(200).json({
+        message: "Recipe unfavorited successfully",
+        isFavorite: false,
+        favoriteCount: updatedRecipe.favoriteCount,
+      });
     } else {
       // Add favorite only if not exists
       await Favorite.create({ user: userId, recipe: recipeId });
       await Recipe.updateOne({ _id: recipeId }, { $inc: { favoriteCount: 1 } });
+      
+      const updatedRecipe = await Recipe.findById(recipeId);
 
-      return res.status(200).json({ message: "Recipe favorited successfully" });
+      return res
+        .status(200)
+        .json({
+          message: "Recipe favorited successfully",
+          isFavorite: true,
+          favoriteCount: updatedRecipe.favoriteCount,
+        });
     }
   } catch (err) {
     res.status(500).json({ error: "Error favoriting recipe" });

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import authRoutes from './routes/auth.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import recipeRoutes from './routes/recipe.routes.js';
@@ -18,6 +19,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(morgan('dev'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/category', categoryRoutes);

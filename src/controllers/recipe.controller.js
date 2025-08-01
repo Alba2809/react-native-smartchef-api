@@ -60,7 +60,6 @@ export const getRecipes = async (req, res) => {
       totalRecipes,
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Error getting recipes" });
   }
 };
@@ -70,30 +69,21 @@ export const getRecipe = async (req, res) => {
     const id = req.params.id;
 
     const recipe = await Recipe.findById(id)
-      .populate("user", "username avatar")
-      .populate("categories")
+      .populate("user", "username avatar -_id")
+      .populate("categories", "name _id")
       .lean();
 
     if (!recipe) {
       return res.status(404).json({ error: "Recipe not found" });
     }
 
-    // get rating of the recipe and the favorite count
-    const [ratingStats, favoritesCount] = await Promise.all([
-      Rating.aggregate([
-        { $match: { recipe: id } },
-        {
-          $group: {
-            _id: "$recipe",
-            averageRating: { $avg: "$value" },
-          },
-        },
-      ]),
-      Favorite.countDocuments({ recipe: id }),
-    ]);
+    // get if the user have favorited the recipe
+    const favorite = await Favorite.findOne({
+      user: req.user._id,
+      recipe: recipe._id,
+    });
 
-    recipe.averageRating = ratingStats[0]?.averageRating || 0;
-    recipe.favoriteCount = favoritesCount;
+    recipe.isFavorite = favorite ? true : false;
 
     res.status(200).json({ recipe });
   } catch (err) {
