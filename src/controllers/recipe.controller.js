@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { generateJSONGeminai } from "../lib/aiProcess.js";
 import cloudinary from "../lib/cloudinary.js";
 import Favorite from "../models/favorite.model.js";
@@ -133,6 +134,7 @@ export const addRecipe = async (req, res) => {
   try {
     const user = req.user._id;
     const {
+      clientId,
       image,
       title,
       description,
@@ -141,6 +143,20 @@ export const addRecipe = async (req, res) => {
       totalTime,
       categories,
     } = req.body;
+
+    // if the recipe already exists, return an error message
+    if (clientId) {
+      const recipe = await Recipe.findOne({
+        _id: clientId,
+      });
+
+      
+      if (recipe) {
+        return res
+          .status(400)
+          .json({ error: "Ya ha sido publicada esta receta" });
+      }
+    }
 
     // upload image to cloudinary
     const uploadResponse = await cloudinary.uploader.upload(image);
@@ -160,10 +176,13 @@ export const addRecipe = async (req, res) => {
 
     await newRecipe.save();
 
+    console.log("new recipe", newRecipe._id);
+
     res
       .status(201)
       .json({ message: "Recipe added successfully", recipe: newRecipe });
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: "Error adding recipe" });
   }
 };
