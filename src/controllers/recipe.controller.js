@@ -109,12 +109,9 @@ export const deleteRecipe = async (req, res) => {
 
     //delete cloudinary image
     if (recipe.image && recipe.image.includes("cloudinary")) {
-      try {
-        const imageId = recipe.image.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(imageId);
-      } catch (deleteError) {
-        console.log("Error deleting cloudinary image: ", deleteError);
-      }
+      const imageId = recipe.image.split("/").pop().split(".")[0];
+
+      await cloudinary.uploader.destroy(imageId);
     }
 
     // delete recipe
@@ -145,12 +142,12 @@ export const addRecipe = async (req, res) => {
     } = req.body;
 
     // if the recipe already exists, return an error message
-    if (clientId) {
+    const isValidId = mongoose.isValidObjectId(clientId.toString());
+    if (clientId && isValidId) {
       const recipe = await Recipe.findOne({
-        _id: clientId,
+        _id: clientId.toString(),
       });
 
-      
       if (recipe) {
         return res
           .status(400)

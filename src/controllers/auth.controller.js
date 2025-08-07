@@ -34,7 +34,7 @@ export const register = async (req, res) => {
     res.status(201).json({
       token,
       user: {
-        id: newUser._id,
+        _id: newUser._id,
         username: newUser.username,
         email: newUser.email,
         avatar: newUser.avatar,
@@ -44,7 +44,6 @@ export const register = async (req, res) => {
     res.status(500).json({ error: "Error creating user" }); 
   }
 };
-
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -67,7 +66,7 @@ export const login = async (req, res) => {
     res.status(200).json({
       token,
       user: {
-        id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
         avatar: user.avatar,
