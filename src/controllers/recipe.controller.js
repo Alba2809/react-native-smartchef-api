@@ -142,16 +142,18 @@ export const addRecipe = async (req, res) => {
     } = req.body;
 
     // if the recipe already exists, return an error message
-    const isValidId = mongoose.isValidObjectId(clientId.toString());
-    if (clientId && isValidId) {
-      const recipe = await Recipe.findOne({
-        _id: clientId.toString(),
-      });
-
-      if (recipe) {
-        return res
-          .status(400)
-          .json({ error: "Ya ha sido publicada esta receta" });
+    if(clientId) {
+      const isValidId = mongoose.isValidObjectId(clientId.toString());
+      if (isValidId) {
+        const recipe = await Recipe.findOne({
+          _id: clientId.toString(),
+        });
+  
+        if (recipe) {
+          return res
+            .status(400)
+            .json({ error: "Ya ha sido publicada esta receta" });
+        }
       }
     }
 
@@ -173,34 +175,11 @@ export const addRecipe = async (req, res) => {
 
     await newRecipe.save();
 
-    console.log("new recipe", newRecipe._id);
-
     res
       .status(201)
       .json({ message: "Recipe added successfully", recipe: newRecipe });
   } catch (err) {
-    console.log(err);
     res.status(500).json({ error: "Error adding recipe" });
   }
 };
 
-export const processTextAI = async (req, res) => {
-  try {
-    const { rawText } = req.body;
-
-    const responseText = await generateJSONGeminai(rawText);
-
-    const match = responseText.match(/```json\s*([\s\S]+?)\s*```/);
-
-    if (!match) {
-      console.warn("⚠️ No se encontró bloque JSON en la respuesta");
-      return res.status(400).json({ error: "Error getting data with AI" });
-    }
-
-    const recipeData = JSON.parse(match[1]);
-
-    res.status(200).json({ recipeData });
-  } catch (err) {
-    res.status(500).json({ error: "Error getting data with AI" });
-  }
-};
