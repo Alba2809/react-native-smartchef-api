@@ -8,7 +8,7 @@ export const register = async (req, res) => {
     const existingEmail = await User.findOne({ email });
 
     if (existingEmail) {
-      return res.status(400).json({ error: "Email already exists" }); 
+      return res.status(400).json({ error: "Email already exists" });
     }
 
     const existingUsername = await User.findOne({ username });
@@ -38,10 +38,11 @@ export const register = async (req, res) => {
         username: newUser.username,
         email: newUser.email,
         avatar: newUser.avatar,
-      }
+        createdAt: newUser.createdAt,
+      },
     });
   } catch (err) {
-    res.status(500).json({ error: "Error creating user" }); 
+    res.status(500).json({ error: "Error creating user" });
   }
 };
 
@@ -70,7 +71,8 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         avatar: user.avatar,
-      }
+        createdAt: user.createdAt,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: "Error logging in" });
