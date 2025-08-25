@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import { generateJSONGeminai } from "../lib/aiProcess.js";
 import cloudinary from "../lib/cloudinary.js";
 import Favorite from "../models/favorite.model.js";
 import Rating from "../models/rating.model.js";
 import Recipe from "../models/recipe.model.js";
+import User from "../models/user.model.js";
 
 export const getRecipes = async (req, res) => {
   try {
@@ -142,13 +142,13 @@ export const addRecipe = async (req, res) => {
     } = req.body;
 
     // if the recipe already exists, return an error message
-    if(clientId) {
+    if (clientId) {
       const isValidId = mongoose.isValidObjectId(clientId.toString());
       if (isValidId) {
         const recipe = await Recipe.findOne({
           _id: clientId.toString(),
         });
-  
+
         if (recipe) {
           return res
             .status(400)
@@ -183,3 +183,51 @@ export const addRecipe = async (req, res) => {
   }
 };
 
+export const getRecipesByUser = async (req, res) => {
+  try {
+    const username = req.query.username;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // get user (not id)
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // get total page
+    const totalRecipes = await Recipe.countDocuments({ user: user._id });
+    const totalPages = Math.ceil(totalRecipes / limit);
+
+    // get recipes
+    const recipes = await Recipe.find({
+      user: user._id,
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("categories", "name _id")
+      .lean();
+
+    console.log(recipes);
+    console.log(user);
+
+    res.status(200).json({
+      user: {
+        username: user.username,
+        avatar: user.avatar,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
+      recipes,
+      currentPage: page,
+      totalPages,
+      totalRecipes,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Error getting user recipes" });
+  }
+};
